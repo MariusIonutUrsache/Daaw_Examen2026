@@ -1,0 +1,64 @@
+package com.exam;
+
+import com.exam.model.Coche;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+// Arrrancamos la aplicación en un puerto aleatorio real 
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+public class CocheIntegrationTest {
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Test
+    public void testCrearYRecuperarCoche() {
+        // --- PASO 1: Crear un coche (POST /cars) ---
+        
+        // Preparamos los datos
+        Coche nuevoCoche = new Coche("1234-TEST", 2024);
+        
+        // Hacemos la llamada POST a nuestra API
+        String urlCrear = "http://localhost:" + port + "/cars";
+        ResponseEntity<Coche> respuestaPost = restTemplate.postForEntity(urlCrear, nuevoCoche, Coche.class);
+
+        // VERIFICACIÓN A (Requisito 2a): Código 201 Created
+        assertEquals(HttpStatus.CREATED, respuestaPost.getStatusCode(), "El código debe ser 201 CREATED");
+
+        // VERIFICACIÓN B (Requisito 2b): Contiene el ID
+        Coche cocheCreado = respuestaPost.getBody();
+        assertNotNull(cocheCreado, "El cuerpo de la respuesta no debe ser nulo");
+        assertNotNull(cocheCreado.getId(), "El coche creado debe tener un ID");
+
+
+        // --- PASO 2: Recuperar el coche (GET /cars/{id}) ---
+        
+        // Usamos el ID que nos devolvió el paso anterior
+        Long idRecuperado = cocheCreado.getId();
+        String urlObtener = "http://localhost:" + port + "/cars/" + idRecuperado;
+
+        // Hacemos la llamada GET
+        ResponseEntity<Coche> respuestaGet = restTemplate.getForEntity(urlObtener, Coche.class);
+
+        // VERIFICACIÓN C (Requisito 4a): Código 200 OK
+        assertEquals(HttpStatus.OK, respuestaGet.getStatusCode(), "El código al recuperar debe ser 200 OK");
+
+        // VERIFICACIÓN D (Requisito 4b): Los datos coinciden
+        Coche cocheRecuperado = respuestaGet.getBody();
+        assertNotNull(cocheRecuperado);
+        assertEquals("1234-TEST", cocheRecuperado.getMatricula());
+        assertEquals(2024, cocheRecuperado.getAnioMatriculacion());
+        
+        System.out.println("TEST FINALIZADO CON ÉXITO: Coche creado con ID " + idRecuperado);
+    }
+}
